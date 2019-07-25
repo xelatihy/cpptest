@@ -5,6 +5,7 @@
 #include <iostream>
 #include <chrono>
 #include <sstream>
+#include <string_view>
 
 using namespace std;
 
@@ -60,6 +61,18 @@ void print_data() {
     fclose(fs);
     cout << "print_data: " << timer.elapsedf() << "\n";
 }
+void write_data() {
+    auto timer = ::timer{};
+    auto fs = fopen("test/data.bin", "wb");
+    for(auto i = 0; i < num_values; i ++) {
+        fwrite(&(int_data[i]), sizeof(int), 1, fs);
+        fwrite(&(flt_data[i]), sizeof(float), 1, fs);
+    }
+    fflush(fs);
+    fclose(fs);
+    cout << "write_data: " << timer.elapsedf() << "\n";
+}
+
 void print_file_directly() {
     auto timer = ::timer{};
     auto fs = fopen("test/print_file_directly.txt", "wt");
@@ -118,7 +131,7 @@ void parse_file_lines() {
         }
     }
     fclose(fs);
-    cout << "parse_file_directly: " << timer.elapsedf() << "\n";
+    cout << "parse_file_lines: " << timer.elapsedf() << "\n";
 }
 void parse_stream_lines() {
     auto timer = ::timer{};
@@ -134,7 +147,7 @@ void parse_stream_lines() {
         }
     }
     fs.close();
-    cout << "parse_stream_directly: " << timer.elapsedf() << "\n";    
+    cout << "parse_stream_lines: " << timer.elapsedf() << "\n";    
 }
 
 void parse_file_fast() {
@@ -154,11 +167,13 @@ void parse_file_fast() {
         }
     }
     fclose(fs);
-    cout << "parse_file_directly: " << timer.elapsedf() << "\n";
+    cout << "parse_file_fast: " << timer.elapsedf() << "\n";
 }
 void parse_stream_fast() {
+    // auto buffer = vector<char>(1048576);
     auto timer = ::timer{};
     auto fs = ifstream("test/data.txt");
+    // fs.rdbuf()->pubsetbuf(buffer.data(), buffer.size());
     char line[4096];
     for(auto j = 0; j < num_lines; j ++) {
         fs.getline(line, sizeof(line));
@@ -173,13 +188,62 @@ void parse_stream_fast() {
         }
     }
     fs.close();
-    cout << "parse_stream_directly: " << timer.elapsedf() << "\n";    
+    cout << "parse_stream_fast: " << timer.elapsedf() << "\n";    
+}
+inline string_view& operator>>(string_view& str, int& value) {
+    auto offset = (char*)nullptr;
+    value = strtol(str.data(), &offset, 10);
+    str.remove_prefix(offset - str.data());
+    return str;
+}
+inline string_view& operator>>(string_view& str, float& value) {
+    auto offset = (char*)nullptr;
+    value = strtof(str.data(), &offset);
+    str.remove_prefix(offset - str.data());
+    return str;
+}
+void parse_stream_fast1() {
+    auto timer = ::timer{};
+    auto fs = ifstream("test/data.txt");
+    auto line = ""s;
+    for(auto j = 0; j < num_lines; j ++) {
+        getline(fs, line);
+        auto scanner = string_view{line};
+        for(auto i = 0; i < values_per_line; i ++) {
+            auto idx = j * values_per_line + i;
+            scanner >> int_check[idx] >> flt_check[idx];
+        }
+    }
+    fs.close();
+    cout << "parse_stream_fast1: " << timer.elapsedf() << "\n";    
+}
+
+void read_file_directly() {
+    auto timer = ::timer{};
+    auto fs = fopen("test/data.bin", "rb");
+    for(auto i = 0; i < num_values; i ++) {
+        fread(&(int_check[i]), sizeof(int), 1, fs);
+        fread(&(flt_check[i]), sizeof(float), 1, fs);
+    }
+    fclose(fs);
+    cout << "read_file_directly: " << timer.elapsedf() << "\n";
+}
+void read_stream_directly() {
+    auto timer = ::timer{};
+    auto fs = ifstream("test/data.bin", ios::binary);
+    for(auto i = 0; i < num_values; i ++) {
+        fs.read((char*)&(int_check[i]), sizeof(int));
+        fs.read((char*)&(flt_check[i]), sizeof(float));
+    }
+    fs.close();
+    cout << "read_stream_directly: " << timer.elapsedf() << "\n";    
 }
 
 int main(int argc, const char** argv) {
     std::ios_base::sync_with_stdio(false);
     gen_data();
     print_data();
+    write_data();
     print_file_directly();
     print_stream_directly();
     for(auto i = 0; i < repetitions; i ++) parse_file_directly();
@@ -188,4 +252,7 @@ int main(int argc, const char** argv) {
     for(auto i = 0; i < repetitions; i ++) parse_stream_lines();
     for(auto i = 0; i < repetitions; i ++) parse_file_fast();
     for(auto i = 0; i < repetitions; i ++) parse_stream_fast();
+    for(auto i = 0; i < repetitions; i ++) parse_stream_fast1();
+    for(auto i = 0; i < repetitions; i ++) read_file_directly();
+    for(auto i = 0; i < repetitions; i ++) read_stream_directly();
 }
