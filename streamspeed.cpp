@@ -36,7 +36,7 @@ struct timer {
 const auto values_per_line = 4;
 const auto num_lines = 131072;
 const auto num_values = values_per_line * num_lines;
-const auto repetitions = 4;
+const auto repetitions = 1;
 
 auto int_data = vector<int>(num_values);
 auto flt_data = vector<float>(num_values);
