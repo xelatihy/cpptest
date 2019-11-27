@@ -4,7 +4,7 @@
   semantic and purely reference semantic for large objects. It simulates
   allocaitons in 3D scenes for path tracing.
 
-- `streamspeed.cpp` compares the speed of C `FILE` and C++ `iostreams`.
+- `streamspeed.cpp` compares the speed of C `FILE` and C++ `fstream`.
   Short conclusion is that C streams are just faster.
   Here are some timing results for a MacBook Pro with SSD and OSX 10.14.
   See the code to check what the functions do.
