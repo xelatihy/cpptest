@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -24,7 +25,7 @@ struct timer {
     elapsed %= 3600000;
     auto mins = (int)(elapsed / 60000);
     elapsed %= 60000;
-    auto secs = (int)(elapsed / 1000);
+    auto secs = (int)std::round(elapsed / 1000.0);
     char buffer[256];
     sprintf(buffer, "%02d:%02d:%02d", hours, mins, secs);
     return buffer;
@@ -118,7 +119,7 @@ struct raw_model {
   }
 };
 
-void make_scene(value_model& scene, int vertices, int triangles, int shapes,
+void init_scene(value_model& scene, int vertices, int triangles, int shapes,
     int instances) {
   for (auto i = 0; i < shapes; i++) {
     auto& shape = scene.shapes.emplace_back();
@@ -133,7 +134,7 @@ void make_scene(value_model& scene, int vertices, int triangles, int shapes,
   }
 }
 
-void make_scene(unique_ptr<unique_model>& scene, int vertices, int triangles,
+void init_scene(unique_ptr<unique_model>& scene, int vertices, int triangles,
     int shapes, int instances) {
   scene = make_unique<unique_model>();
   for (auto i = 0; i < shapes; i++) {
@@ -151,7 +152,7 @@ void make_scene(unique_ptr<unique_model>& scene, int vertices, int triangles,
   }
 }
 
-void make_scene(shared_ptr<shared_model>& scene, int vertices, int triangles,
+void init_scene(shared_ptr<shared_model>& scene, int vertices, int triangles,
     int shapes, int instances) {
   scene = make_shared<shared_model>();
   for (auto i = 0; i < shapes; i++) {
@@ -169,7 +170,7 @@ void make_scene(shared_ptr<shared_model>& scene, int vertices, int triangles,
   }
 }
 
-void make_scene(
+void init_scene(
     raw_model*& scene, int vertices, int triangles, int shapes, int instances) {
   scene = new raw_model{};
   for (auto i = 0; i < shapes; i++) {
@@ -185,6 +186,13 @@ void make_scene(
     instance->shape = scene->shapes[i % (int)scene->shapes.size()];
     scene->instances.push_back(instance);
   }
+}
+
+template<typename any_model>
+any_model make_scene(int vertices, int triangles, int shapes, int instances) {
+  auto scene = any_model{};
+  init_scene(scene, vertices, triangles, shapes, instances);
+  return scene;
 }
 
 void clear_scene(value_model& scene) { scene = {}; }
@@ -231,25 +239,29 @@ void erase_shapes(raw_model* scene, int erases) {
   }
 }
 
-template <typename Scene>
+template <typename any_scene>
 void run_test(const string& message, int vertices, int triangles, int shapes,
     int instances, int erases) {
-  auto timer = ::timer{};
-  auto scene = Scene{};
-  make_scene(scene, vertices, triangles, shapes, instances);
-  auto sum          = sum_vertices(scene);
-  auto [mem0, mem1] = get_used_memory();
+  auto [mem0s, mem1s] = get_used_memory();
+  auto timer          = ::timer{};
+  // auto scene          = Scene{};
+  // init_scene(scene, vertices, triangles, shapes, instances);
+  auto scene          = any_scene{};
+  scene          = make_scene<any_scene>(vertices, triangles, shapes, instances);
+  auto sum            = sum_vertices(scene);
+  auto [mem0e, mem1e] = get_used_memory();
   erase_shapes(scene, erases);
   clear_scene(scene);
   auto elapsed = timer.elapsedfs();
   printf("%9s %9d %9d %9d %9s %9d %9d %9g\n", message.c_str(), shapes,
-      instances, vertices, elapsed.c_str(), (int)mem0, (int)mem1, sum);
+      instances, vertices, elapsed.c_str(), (int)(mem0e - mem0s),
+      (int)(mem1e - mem1s), sum);
 }
 
 int main(int argc, const char** argv) {
   printf("%9s %9s %9s %9s %9s %9s %9s %9s\n", "mode", "shapes", "instances",
       "vertices", "time", "mem1", "mem2", "check");
-  for (auto shapes : {5000, 10000}) {
+  for (auto shapes : {5000, 15000}) {
     for (auto instance_ratio : {1, 5}) {
       for (auto vertices : {50000}) {
         for (auto triangles : {50000}) {
