@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.9)
 
-project (streamspeed)
+project (cpptest)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,3 +25,4 @@ if(MSVC)
 endif(MSVC)
 
 add_executable(streamspeed streamspeed.cpp)
+add_executable(valuesemantic valuesemantic.cpp)
